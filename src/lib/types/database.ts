@@ -3,6 +3,15 @@ export type MemberRole = "owner" | "admin" | "member";
 type Profile = { id: string; email: string | null; full_name: string | null; created_at: string };
 type Organization = { id: string; name: string; slug: string; created_by: string | null; created_at: string };
 type Member = { id: string; organization_id: string; user_id: string; role: MemberRole; created_at: string };
+type Note = {
+  id: string;
+  organization_id: string;
+  author_id: string | null;
+  title: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+};
 
 export type Database = {
   public: {
@@ -34,6 +43,27 @@ export type Database = {
           {
             foreignKeyName: "members_user_id_fkey";
             columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      notes: {
+        Row: Note;
+        Insert: Partial<Note> & { organization_id: string; title: string };
+        Update: Partial<Note>;
+        Relationships: [
+          {
+            foreignKeyName: "notes_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notes_author_id_fkey";
+            columns: ["author_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
