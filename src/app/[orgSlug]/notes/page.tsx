@@ -22,7 +22,7 @@ export default async function NotesPage({ params }: { params: Promise<{ orgSlug:
           Tambah catatan
         </Link>
       </div>
-      <NotesList notes={notes ?? []} />
+      <NotesList notes={notes ?? []} orgSlug={orgSlug} />
     </main>
   );
 }

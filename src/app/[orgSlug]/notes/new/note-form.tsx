@@ -3,12 +3,18 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { BODY_MAX, TITLE_MAX } from "@/lib/notes";
-import { createNote, type NoteFormState } from "../actions";
+import { createNote, updateNote, type NoteFormState } from "../actions";
 
 const initial: NoteFormState = {};
 
-export function NoteForm({ orgSlug }: { orgSlug: string }) {
-  const [state, action, pending] = useActionState(createNote.bind(null, orgSlug), initial);
+type Props = { orgSlug: string; note?: { id: string; title: string; body: string } };
+
+export function NoteForm({ orgSlug, note }: Props) {
+  const [state, action, pending] = useActionState(
+    note ? updateNote.bind(null, orgSlug, note.id) : createNote.bind(null, orgSlug),
+    initial,
+  );
+  const cancelHref = note ? `/${orgSlug}/notes/${note.id}` : `/${orgSlug}/notes`;
 
   return (
     <form className="space-y-4" action={action}>
@@ -20,7 +26,7 @@ export function NoteForm({ orgSlug }: { orgSlug: string }) {
           id="title"
           name="title"
           type="text"
-          defaultValue={state.values?.title}
+          defaultValue={state.values?.title ?? note?.title}
           className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
         />
       </div>
@@ -32,7 +38,7 @@ export function NoteForm({ orgSlug }: { orgSlug: string }) {
           id="body"
           name="body"
           rows={10}
-          defaultValue={state.values?.body}
+          defaultValue={state.values?.body ?? note?.body}
           className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
         />
         <p className="mt-1 text-xs text-gray-500">
@@ -50,7 +56,7 @@ export function NoteForm({ orgSlug }: { orgSlug: string }) {
         <button type="submit" disabled={pending} className="rounded-md bg-gray-900 px-4 py-2 text-white disabled:opacity-50">
           Simpan
         </button>
-        <Link href={`/${orgSlug}/notes`} className="rounded-md border border-gray-300 px-4 py-2">
+        <Link href={cancelHref} className="rounded-md border border-gray-300 px-4 py-2">
           Batal
         </Link>
       </div>

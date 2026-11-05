@@ -6,6 +6,8 @@ const redirect = vi.fn((url: string) => {
 vi.mock("next/navigation", () => ({ redirect: (url: string) => redirect(url) }));
 
 const insert = vi.fn();
+const selectAfterUpdate = vi.fn();
+const update = vi.fn(() => ({ eq: () => ({ select: selectAfterUpdate }) }));
 let user: { id: string } | null = { id: "user-1" };
 let org: { id: string } | null = { id: "org-1" };
 vi.mock("@/lib/supabase/server", () => ({
@@ -14,11 +16,11 @@ vi.mock("@/lib/supabase/server", () => ({
     from: (table: string) =>
       table === "organizations"
         ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: org }) }) }) }
-        : { insert },
+        : { insert, update },
   }),
 }));
 
-import { createNote } from "@/app/[orgSlug]/notes/actions";
+import { createNote, updateNote } from "@/app/[orgSlug]/notes/actions";
 
 function form(title: string, body = "") {
   const fd = new FormData();
@@ -69,5 +71,34 @@ describe("createNote", () => {
     insert.mockResolvedValue({ error: { code: "42501" } });
     const res = await createNote("acme", {}, form("Judul"));
     expect(res.error).toBe("Gagal menyimpan catatan.");
+  });
+});
+
+describe("updateNote", () => {
+  beforeEach(() => {
+    selectAfterUpdate.mockResolvedValue({ data: [{ id: "n1" }], error: null });
+  });
+
+  it("hanya mengirim judul dan isi lalu redirect ke detail", async () => {
+    await expect(updateNote("acme", "n1", {}, form("  Baru ", "isi"))).rejects.toThrow("REDIRECT:/acme/notes/n1");
+    expect(update).toHaveBeenCalledWith({ title: "Baru", body: "isi" });
+  });
+
+  it("galat validasi tidak memanggil update", async () => {
+    const res = await updateNote("acme", "n1", {}, form("  "));
+    expect(res.error).toBe("Judul wajib diisi.");
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("0 baris terubah (ditolak RLS) menampilkan galat jelas", async () => {
+    selectAfterUpdate.mockResolvedValue({ data: [], error: null });
+    const res = await updateNote("acme", "n1", {}, form("Judul"));
+    expect(res.error).toMatch(/tidak berhak/);
+  });
+
+  it("tanpa user diarahkan ke /login", async () => {
+    user = null;
+    await expect(updateNote("acme", "n1", {}, form("Judul"))).rejects.toThrow("REDIRECT:/login");
+    expect(update).not.toHaveBeenCalled();
   });
 });

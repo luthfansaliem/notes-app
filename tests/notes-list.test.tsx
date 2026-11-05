@@ -13,7 +13,7 @@ afterEach(cleanup);
 
 describe("NotesList", () => {
   it("menampilkan catatan sesuai urutan yang diberikan, lengkap dengan penulis dan tanggal", () => {
-    render(<NotesList notes={notes} />);
+    render(<NotesList notes={notes} orgSlug="acme" />);
     const items = screen.getAllByRole("listitem");
     expect(items.map((li) => within(li).getByText(/Terbaru|Tanpa nama|Nama kosong|Terlama/).textContent)).toEqual([
       "Terbaru",
@@ -28,14 +28,14 @@ describe("NotesList", () => {
   });
 
   it("memakai email bila nama kosong dan 'Mantan anggota' bila penulis tidak ada", () => {
-    render(<NotesList notes={notes} />);
+    render(<NotesList notes={notes} orgSlug="acme" />);
     expect(screen.getByText("budi@x.id")).toBeInTheDocument();
     expect(screen.getByText("ani@x.id")).toBeInTheDocument();
     expect(screen.getByText("Mantan anggota")).toBeInTheDocument();
   });
 
   it("menampilkan tampilan kosong bila belum ada catatan", () => {
-    render(<NotesList notes={[]} />);
+    render(<NotesList notes={[]} orgSlug="acme" />);
     expect(screen.getByText("Belum ada catatan.")).toBeInTheDocument();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
