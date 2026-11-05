@@ -29,3 +29,34 @@ export async function createNote(orgSlug: string, _prev: NoteFormState, formData
 
   redirect(`/${orgSlug}/notes`);
 }
+
+export async function updateNote(
+  orgSlug: string,
+  noteId: string,
+  _prev: NoteFormState,
+  formData: FormData,
+): Promise<NoteFormState> {
+  const values = { title: String(formData.get("title") ?? ""), body: String(formData.get("body") ?? "") };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const parsed = parseNote(formData);
+  if ("error" in parsed) return { error: parsed.error, values };
+
+  // Hanya judul dan isi yang diubah. RLS menentukan siapa boleh; baris yang ditolak tidak terkena update.
+  const { data, error } = await supabase
+    .from("notes")
+    .update({ title: parsed.title, body: parsed.body })
+    .eq("id", noteId)
+    .select("id");
+  if (error) return { error: "Gagal menyimpan perubahan.", values };
+  if (!data || data.length === 0) {
+    return { error: "Catatan tidak ditemukan atau Anda tidak berhak mengubahnya.", values };
+  }
+
+  redirect(`/${orgSlug}/notes/${noteId}`);
+}

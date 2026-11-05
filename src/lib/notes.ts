@@ -25,3 +25,15 @@ export function parseNote(formData: FormData): NoteInput | { error: string } {
     body: String(formData.get("body") ?? ""),
   });
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
+// Hanya untuk menampilkan tombol; penegakan sebenarnya oleh RLS (lihat migrasi 0005).
+export function canEditNote(role: string | null, authorId: string | null, userId: string): boolean {
+  if (role === "owner" || role === "admin") return true;
+  return role === "member" && authorId !== null && authorId === userId;
+}
