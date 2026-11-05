@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Menjalankan test RLS pada Postgres sekali pakai di Docker (BUKAN project Supabase).
 # Pemakaian: supabase/tests/run.sh
-# Semua supabase/migrations/*.sql diterapkan berurutan, lalu supabase/tests/members_rls.sql dijalankan.
+# Semua supabase/migrations/*.sql diterapkan berurutan, lalu semua supabase/tests/*.sql dijalankan.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -38,4 +38,7 @@ for f in "$root"/migrations/*.sql; do
   psql -f "/work/migrations/$(basename "$f")"
 done
 
-psql -f /work/tests/members_rls.sql
+for t in "$root"/tests/*.sql; do
+  echo ">> test: $(basename "$t")"
+  psql -f "/work/tests/$(basename "$t")"
+done
