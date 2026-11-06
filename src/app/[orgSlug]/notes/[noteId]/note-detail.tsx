@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeleteButton } from "./delete-button";
 import { authorName, type NoteListItem } from "../notes-list";
 
 export type NoteDetailData = {
@@ -34,6 +35,7 @@ export function NoteDetail({ note, orgSlug, canEdit }: { note: NoteDetailData; o
         <time dateTime={note.updated_at}>{formatDate(note.updated_at)}</time>
       </p>
       <p className="whitespace-pre-wrap break-words">{note.body}</p>
+      {canEdit && <DeleteButton orgSlug={orgSlug} noteId={note.id} />}
       <Link href={`/${orgSlug}/notes`} className="inline-block text-blue-600 underline">
         Kembali ke daftar
       </Link>

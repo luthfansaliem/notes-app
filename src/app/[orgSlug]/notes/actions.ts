@@ -60,3 +60,20 @@ export async function updateNote(
 
   redirect(`/${orgSlug}/notes/${noteId}`);
 }
+
+export async function deleteNote(orgSlug: string, noteId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // RLS menentukan siapa boleh menghapus; baris yang ditolak tidak ikut terhapus (0 baris).
+  const { data, error } = await supabase.from("notes").delete().eq("id", noteId).select("id");
+  if (error) return { error: "Gagal menghapus catatan." };
+  if (!data || data.length === 0) {
+    return { error: "Catatan tidak ditemukan atau Anda tidak berhak menghapusnya." };
+  }
+
+  redirect(`/${orgSlug}/notes`);
+}
