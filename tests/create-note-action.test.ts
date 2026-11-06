@@ -7,6 +7,8 @@ vi.mock("next/navigation", () => ({ redirect: (url: string) => redirect(url) }))
 
 const insert = vi.fn();
 const selectAfterUpdate = vi.fn();
+const selectAfterDelete = vi.fn();
+const del = vi.fn(() => ({ eq: () => ({ select: selectAfterDelete }) }));
 const update = vi.fn(() => ({ eq: () => ({ select: selectAfterUpdate }) }));
 let user: { id: string } | null = { id: "user-1" };
 let org: { id: string } | null = { id: "org-1" };
@@ -16,11 +18,11 @@ vi.mock("@/lib/supabase/server", () => ({
     from: (table: string) =>
       table === "organizations"
         ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: org }) }) }) }
-        : { insert, update },
+        : { insert, update, delete: del },
   }),
 }));
 
-import { createNote, updateNote } from "@/app/[orgSlug]/notes/actions";
+import { createNote, deleteNote, updateNote } from "@/app/[orgSlug]/notes/actions";
 
 function form(title: string, body = "") {
   const fd = new FormData();
@@ -100,5 +102,34 @@ describe("updateNote", () => {
     user = null;
     await expect(updateNote("acme", "n1", {}, form("Judul"))).rejects.toThrow("REDIRECT:/login");
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteNote", () => {
+  beforeEach(() => {
+    selectAfterDelete.mockResolvedValue({ data: [{ id: "n1" }], error: null });
+  });
+
+  it("menghapus lalu redirect ke daftar", async () => {
+    await expect(deleteNote("acme", "n1")).rejects.toThrow("REDIRECT:/acme/notes");
+    expect(del).toHaveBeenCalled();
+  });
+
+  it("tanpa user diarahkan ke /login dan tidak menghapus", async () => {
+    user = null;
+    await expect(deleteNote("acme", "n1")).rejects.toThrow("REDIRECT:/login");
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it("0 baris terhapus (ditolak RLS) menampilkan galat jelas", async () => {
+    selectAfterDelete.mockResolvedValue({ data: [], error: null });
+    const res = await deleteNote("acme", "n1");
+    expect(res.error).toMatch(/tidak berhak/);
+  });
+
+  it("galat database menampilkan galat umum", async () => {
+    selectAfterDelete.mockResolvedValue({ data: null, error: { code: "XX000" } });
+    const res = await deleteNote("acme", "n1");
+    expect(res.error).toBe("Gagal menghapus catatan.");
   });
 });

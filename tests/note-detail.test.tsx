@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NoteDetail } from "@/app/[orgSlug]/notes/[noteId]/note-detail";
 import { canEditNote } from "@/lib/notes";
@@ -6,6 +6,7 @@ import { canEditNote } from "@/lib/notes";
 vi.mock("@/app/[orgSlug]/notes/actions", () => ({
   createNote: vi.fn(async () => ({})),
   updateNote: vi.fn(async () => ({})),
+  deleteNote: vi.fn(async () => ({})),
 }));
 
 import { NoteForm } from "@/app/[orgSlug]/notes/new/note-form";
@@ -52,5 +53,36 @@ describe("NoteForm mode edit", () => {
     expect(screen.getByLabelText("Judul")).toHaveValue("Rapat");
     expect(screen.getByLabelText("Isi")).toHaveValue("isi");
     expect(screen.getByRole("link", { name: "Batal" })).toHaveAttribute("href", "/acme/notes/n1");
+  });
+});
+
+describe("tombol hapus", () => {
+  it("tampil hanya bila boleh mengubah", () => {
+    render(<NoteDetail note={note} orgSlug="acme" canEdit={false} />);
+    expect(screen.queryByRole("button", { name: "Hapus" })).not.toBeInTheDocument();
+    cleanup();
+    render(<NoteDetail note={note} orgSlug="acme" canEdit />);
+    expect(screen.getByRole("button", { name: "Hapus" })).toBeInTheDocument();
+  });
+
+  it("batal tidak menghapus apa pun", async () => {
+    const actions = await import("@/app/[orgSlug]/notes/actions");
+    vi.mocked(actions.deleteNote).mockClear();
+    render(<NoteDetail note={note} orgSlug="acme" canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: "Hapus" }));
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Batal" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(actions.deleteNote).not.toHaveBeenCalled();
+  });
+
+  it("lanjut memanggil deleteNote dan menampilkan galatnya", async () => {
+    const actions = await import("@/app/[orgSlug]/notes/actions");
+    vi.mocked(actions.deleteNote).mockResolvedValueOnce({ error: "Tidak berhak." });
+    render(<NoteDetail note={note} orgSlug="acme" canEdit />);
+    fireEvent.click(screen.getByRole("button", { name: "Hapus" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ya, hapus" }));
+    await waitFor(() => expect(actions.deleteNote).toHaveBeenCalledWith("acme", "n1"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Tidak berhak.");
   });
 });
